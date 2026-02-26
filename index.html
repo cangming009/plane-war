@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>✈️ 飞机大战</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+        h1 { color: white; margin-bottom: 10px; text-shadow: 0 0 20px rgba(79,172,254,0.8); font-size: 24px; letter-spacing: 2px; }
+        .game-wrapper { position: relative; width: 95%; max-width: 450px; }
+        #gameCanvas { border: 3px solid rgba(79,172,254,0.6); border-radius: 10px; display: block; background: linear-gradient(180deg, #0f0c29 0%, #1a1a3e 100%); box-shadow: 0 0 30px rgba(79,172,254,0.3); width: 100%; height: auto; }
+        .hud { display: flex; justify-content: space-between; padding: 10px; background: rgba(0,0,0,0.7); border-radius: 10px 10px 0 0; color: white; font-size: 12px; }
+        .hud-item { display: flex; flex-direction: column; align-items: center; }
+        .hud-label { font-size: 10px; color: #888; }
+        .hud-value { font-size: 16px; font-weight: bold; }
+        .hud-value.score { color: #ffd700; }
+        .hud-value.level { color: #ff6b6b; }
+        .hud-value.boss-hp { color: #ff0000; display: none; }
+        .screen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,12,41,0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; border-radius: 10px; }
+        .screen.hidden { display: none; }
+        .screen-title { color: white; font-size: 28px; margin-bottom: 20px; }
+        .screen-subtitle { color: #4facfe; font-size: 14px; margin-bottom: 20px; }
+        .btn { padding: 12px 30px; margin: 8px; font-size: 16px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border: none; border-radius: 25px; cursor: pointer; }
+        .btn.secondary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .stats-box { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+        .stat-row { display: flex; justify-content: space-between; padding: 5px 0; color: white; }
+        .stat-label { color: #aaa; }
+        .stat-value { color: #4facfe; font-weight: bold; }
+        .touch-controls { display: none; margin-top: 10px; gap: 5px; }
+        @media (max-width: 500px) { .touch-controls { display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(2, 45px); justify-content: center; } }
+        .touch-btn { width: 50px; height: 45px; background: rgba(79,172,254,0.3); color: white; border: 1px solid rgba(79,172,254,0.5); border-radius: 10px; font-size: 16px; display: flex; justify-content: center; align-items: center; }
+        .touch-btn.fire { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%); grid-column: 3; grid-row: 1; }
+        .touch-btn.up { grid-column: 2; grid-row: 1; }
+        .touch-btn.left { grid-column: 1; grid-row: 2; }
+        .touch-btn.down { grid-column: 2; grid-row: 2; }
+        .touch-btn.right { grid-column: 3; grid-row: 2; }
+    </style>
+</head>
+<body>
+    <h1>✈️ 飞机大战</h1>
+    <div class="game-wrapper">
+        <div class="hud">
+            <div class="hud-item"><span class="hud-label">得分</span><span class="hud-value score" id="score">0</span></div>
+            <div class="hud-item"><span class="hud-label">等级</span><span class="hud-value level" id="level">1</span></div>
+            <div class="hud-item"><span class="hud-label">生命</span><span class="hud-value" id="lives">❤️❤️❤️</span></div>
+            <div class="hud-item"><span class="hud-label">Boss</span><span class="hud-value boss-hp" id="bossHp">100%</span></div>
+        </div>
+        <canvas id="gameCanvas" width="450" height="600"></canvas>
+        <div class="screen" id="startScreen">
+            <div class="screen-title">✈️ 飞机大战</div>
+            <div class="screen-subtitle">经典街机射击游戏</div>
+            <div class="stats-box">
+                <div class="stat-row"><span class="stat-label">最高分</span><span class="stat-value" id="highScore">0</span></div>
+                <div class="stat-row"><span class="stat-label">最高关卡</span><span class="stat-value" id="maxLevel">1</span></div>
+            </div>
+            <button class="btn" onclick="startGame()">🚀 开始游戏</button>
+        </div>
+        <div class="screen hidden" id="gameOverScreen">
+            <div class="screen-title">💀 游戏结束</div>
+            <div class="stats-box">
+                <div class="stat-row"><span class="stat-label">最终得分</span><span class="stat-value" id="finalScore">0</span></div>
+                <div class="stat-row"><span class="stat-label">到达关卡</span><span class="stat-value" id="finalLevel">1</span></div>
+            </div>
+            <button class="btn" onclick="restartGame()">🔄 再来一次</button>
+            <button class="btn secondary" onclick="backToMenu()">🏠 主菜单</button>
+        </div>
+        <div class="touch-controls">
+            <button class="touch-btn up" ontouchstart="handleTouch('up')">⬆️</button>
+            <button class="touch-btn left" ontouchstart="handleTouch('left')">⬅️</button>
+            <button class="touch-btn down" ontouchstart="handleTouch('down')">⬇️</button>
+            <button class="touch-btn right" ontouchstart="handleTouch('right')">➡️</button>
+            <button class="touch-btn fire" ontouchstart="handleTouch('fire')">🔫</button>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const CONFIG = { playerSpeed: 5, bulletSpeed: 8, enemySpeed: 2, enemySpawnRate: 1200, maxLives: 5, levels: 5 };
+        let gameState = { running: false, score: 0, level: 1, lives: 3, highScore: parseInt(localStorage.getItem('planeWarHighScore'))||0, maxLevel: parseInt(localStorage.getItem('planeWarMaxLevel'))||1, weaponLevel: 1, hasBoss: false, enemies: [], bullets: [], enemyBullets: [], particles: [], powerUps: [] };
+        let player = { x: 225, y: 520, width: 40, height: 50, shootCooldown: 0, invincible: false, invincibleTime: 0 };
+        let boss = null, keys = {}, enemySpawnTimer = null;
+        document.getElementById('highScore').textContent = gameState.highScore;
+        document.getElementById('maxLevel').textContent = gameState.maxLevel;
+        
+        function startGame() {
+            gameState = { running: true, score: 0, level: 1, lives: 3, highScore: gameState.highScore, maxLevel: gameState.maxLevel, weaponLevel: 1, hasBoss: false, bossDefeated: false, enemies: [], bullets: [], enemyBullets: [], particles: [], powerUps: [] };
+            player = { x: canvas.width/2, y: canvas.height-80, width: 40, height: 50, speed: CONFIG.playerSpeed, shootCooldown: 0, invincible: false, invincibleTime: 0 };
+            boss = null;
+            hideAllScreens();
+            updateHUD();
+            enemySpawnTimer = setInterval(spawnEnemy, CONFIG.enemySpawnRate);
+            gameLoop();
+        }
+        
+        function hideAllScreens() {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        }
+        
+        function restartGame() { hideAllScreens(); startGame(); }
+        function backToMenu() { hideAllScreens(); document.getElementById('startScreen').classList.remove('hidden'); document.getElementById('highScore').textContent = gameState.highScore; document.getElementById('maxLevel').textContent = gameState.maxLevel; }
+        
+        function spawnEnemy() {
+            if (!gameState.running || gameState.hasBoss || gameState.level > CONFIG.levels) return;
+            if (gameState.score >= gameState.level * 5000 && !gameState.hasBoss) { createBoss(); return; }
+            if (gameState.enemies.length < 5 + gameState.level) createEnemy();
+        }
+        
+        function createEnemy() {
+            const types = ['normal','fast','tank'];
+            const type = types[Math.floor(Math.random()*types.length)];
+            gameState.enemies.push({ x: Math.random()*(canvas.width-40)+20, y: -40, width: 35, height: 35, type: type, hp: type==='tank'?3:type==='fast'?1:2, speed: type==='fast'?4:CONFIG.enemySpeed, shootCooldown: Math.random()*100 });
+        }
+        
+        function createBoss() {
+            gameState.hasBoss = true;
+            clearInterval(enemySpawnTimer);
+            boss = { x: canvas.width/2, y: -80, width: 100, height: 80, hp: 50+gameState.level*20, maxHp: 50+gameState.level*20, speed: 1.5, direction: 1, shootCooldown: 0, entering: true };
+            updateHUD();
+        }
+        
+        function updateHUD() {
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('level').textContent = gameState.level;
+            document.getElementById('lives').textContent = '❤️'.repeat(Math.max(0,gameState.lives));
+            const bossHpEl = document.getElementById('bossHp');
+            if (boss && boss.hp>0) { bossHpEl.style.display='block'; bossHpEl.textContent = Math.ceil(boss.hp/boss.maxHp*100)+'%'; }
+            else { bossHpEl.style.display='none'; }
+        }
+        
+        function gameLoop() {
+            if (!gameState.running) return;
+            update(); render();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function update() {
+            if (keys['ArrowUp']||keys['KeyW']) player.y -= player.speed;
+            if (keys['ArrowDown']||keys['KeyS']) player.y += player.speed;
+            if (keys['ArrowLeft']||keys['KeyA']) player.x -= player.speed;
+            if (keys['ArrowRight']||keys['KeyD']) player.x += player.speed;
+            player.x = Math.max(20, Math.min(canvas.width-20, player.x));
+            player.y = Math.max(25, Math.min(canvas.height-25, player.y));
+            if (player.shootCooldown > 0) player.shootCooldown--;
+            if ((keys['Space']||keys['Mouse']) && player.shootCooldown<=0) { shoot(); player.shootCooldown = 15-gameState.weaponLevel*2; }
+            if (player.invincible) { player.invincibleTime--; if (player.invincibleTime<=0) player.invincible=false; }
+            gameState.bullets = gameState.bullets.filter(b => { b.y -= b.speed; return b.y > -20; });
+            gameState.enemyBullets = gameState.enemyBullets.filter(b => { b.x += b.vx; b.y += b.vy; return b.x>-10 && b.x<canvas.width+10 && b.y<canvas.height+10; });
+            gameState.enemies.forEach(e => { e.y += e.speed; e.shootCooldown--; if (e.shootCooldown<=0 && e.y>0) { e.shootCooldown = 100+Math.random()*100; gameState.enemyBullets.push({x:e.x,y:e.y+e.height/2,vx:0,vy:4,damage:1}); } });
+            gameState.enemies = gameState.enemies.filter(e => e.y < canvas.height+50);
+            gameState.powerUps = gameState.powerUps.filter(p => { p.y += 2; return p.y < canvas.height+20; });
+            gameState.particles = gameState.particles.filter(p => { p.x += p.vx; p.y += p.vy; p.life--; p.alpha = p.life/30; return p.life>0; });
+            if (boss) updateBoss();
+            checkCollisions();
+            updateHUD();
+        }
+        
+        function updateBoss() {
+            if (!boss) return;
+            if (boss.entering) { boss.y += 1; if (boss.y>=80) boss.entering=false; return; }
+            boss.x += boss.speed * boss.direction;
+            if (boss.x<=boss.width/2+20 || boss.x>=canvas.width-boss.width/2-20) boss.direction *= -1;
+            boss.shootCooldown--;
+            if (boss.shootCooldown<=0) {
+                boss.shootCooldown = 40-gameState.level*5;
+                for (let i=-2;i<=2;i++) gameState.enemyBullets.push({x:boss.x,y:boss.y+boss.height/2,vx:i*1.5,vy:5,damage:2});
+            }
+            if (boss.hp<=0) {
+                for (let i=0;i<50;i++) gameState.particles.push({x:boss.x,y:boss.y,vx:(Math.random()-0.5)*10,vy:(Math.random()-0.5)*10,color:'#ff6b6b',size:Math.random()*8+2,life:30+Math.random()*30,alpha:1});
+                gameState.score += gameState.level*2000;
+                boss = null;
+                gameState.level++;
+                if (gameState.level > CONFIG.levels) { victory(); return; }
+                gameState.hasBoss = false;
+                gameState.score += 1000; gameState.lives = Math.min(CONFIG.maxLives, gameState.lives+1);
+                gameState.weaponLevel = Math.min(3, Math.floor(gameState.level/2)+1);
+                enemySpawnTimer = setInterval(spawnEnemy, CONFIG.enemySpawnRate);
+            }
+        }
+        
+        function shoot() {
+            const types = [{color:'#4facfe',w:4,h:15,d:1},{color:'#ffd700',w:6,h:20,d:2},{color:'#ff6b6b',w:10,h:30,d:3}];
+            const t = types[gameState.weaponLevel-1];
+            if (gameState.weaponLevel===2) { gameState.bullets.push({x:player.x-15,y:player.y-25,...t,speed:CONFIG.bulletSpeed}); gameState.bullets.push({x:player.x+15,y:player.y-25,...t,speed:CONFIG.bulletSpeed}); }
+            else if (gameState.weaponLevel===3) { gameState.bullets.push({x:player.x-10,y:player.y-25,...t,speed:CONFIG.bulletSpeed*1.5}); gameState.bullets.push({x:player.x+10,y:player.y-25,...t,speed:CONFIG.bulletSpeed*1.5}); gameState.bullets.push({x:player.x,y:player.y-25,...t,speed:CONFIG.bulletSpeed*1.5}); }
+            else gameState.bullets.push({x:player.x,y:player.y-25,...t,speed:CONFIG.bulletSpeed});
+        }
+        
+        function checkCollisions() {
+            gameState.bullets.forEach((b,bi) => {
+                gameState.enemies.forEach((e,ei) => {
+                    if (Math.abs(b.x-e.x)<e.width/2+b.w/2 && Math.abs(b.y-e.y)<e.height/2+b.h/2) {
+                        e.hp -= b.d; gameState.bullets.splice(bi,1);
+                        createParticles(e.x,e.y,'#4facfe',5);
+                        if (e.hp<=0) { createParticles(e.x,e.y,'#ff6b6b',15); gameState.score += 100*gameState.level; if (Math.random()<0.15) createPowerUp(e.x,e.y); gameState.enemies.splice(ei,1); }
+                    }
+                });
+                if (boss && !boss.entering && Math.abs(b.x-boss.x)<boss.width/2+b.w/2 && Math.abs(b.y-boss.y)<boss.height/2+b.h/2) { boss.hp -= b.d; gameState.bullets.splice(bi,1); createParticles(b.x,b.y,'#ffd700',3); }
+            });
+            if (!player.invincible) {
+                gameState.enemyBullets.forEach((b,bi) => { if (Math.abs(b.x-player.x)<player.width/2+5 && Math.abs(b.y-player.y)<player.height/2+5) { playerHit(b.damage); gameState.enemyBullets.splice(bi,1); } });
+                gameState.enemies.forEach((e,ei) => { if (Math.abs(e.x-player.x)<player.width/2+e.width/2 && Math.abs(e.y-player.y)<player.height/2+e.height/2) { playerHit(2); createParticles(e.x,e.y,'#ff6b6b',15); gameState.enemies.splice(ei,1); } });
+                if (boss && !boss.entering && !player.invincible && Math.abs(boss.x-player.x)<player.width/2+boss.width/2 && Math.abs(boss.y-player.y)<player.height/2+boss.height/2) playerHit(3);
+            }
+            gameState.powerUps.forEach((p,pi) => { if (Math.abs(p.x-player.x)<player.width/2+15 && Math.abs(p.y-player.y)<player.height/2+15) { applyPowerUp(p.type); gameState.powerUps.splice(pi,1); } });
+        }
+        
+        function playerHit(dmg) { gameState.lives -= dmg; player.invincible = true; player.invincibleTime = 120; createParticles(player.x,player.y,'#ff0000',20); if (gameState.lives<=0) gameOver(); }
+        function createParticles(x,y,color,cnt) { for (let i=0;i<cnt;i++) gameState.particles.push({x,y,vx:(Math.random()-0.5)*8,vy:(Math.random()-0.5)*8,color,size:Math.random()*4+1,life:20+Math.random()*20,alpha:1}); }
+        function createPowerUp(x,y) { const types=['weapon','life','score']; const t=types[Math.floor(Math.random()*types.length)]; gameState.powerUps.push({x,y,type:t,width:30,height:30}); }
+        function applyPowerUp(t) { if (t==='weapon') gameState.weaponLevel=Math.min(3,gameState.weaponLevel+1); else if (t==='life') gameState.lives=Math.min(CONFIG.maxLives,gameState.lives+1); else gameState.score+=500; }
+        
+        function gameOver() {
+            gameState.running = false; clearInterval(enemySpawnTimer);
+            if (gameState.score > gameState.highScore) { gameState.highScore = gameState.score; localStorage.setItem('planeWarHighScore', gameState.highScore); }
+            if (gameState.level > gameState.maxLevel) { gameState.maxLevel = gameState.level; localStorage.setItem('planeWarMaxLevel', gameState.maxLevel); }
+            document.getElementById('finalScore').textContent = gameState.score;
+            document.getElementById('finalLevel').textContent = gameState.level;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+        
+        function victory() {
+            gameState.running = false; clearInterval(enemySpawnTimer);
+            if (gameState.score > gameState.highScore) { gameState.highScore = gameState.score; localStorage.setItem('planeWarHighScore', gameState.highScore); }
+            if (gameState.level > gameState.maxLevel) { gameState.maxLevel = gameState.level; localStorage.setItem('planeWarMaxLevel', gameState.maxLevel); }
+            document.getElementById('finalScore').textContent = gameState.score;
+            document.getElementById('finalLevel').textContent = gameState.level;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+            document.querySelector('#gameOverScreen .screen-title').textContent = '🏆 胜利!';
+        }
+        
+        function render() {
+            ctx.fillStyle = '#0f0c29'; ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            for (let i=0;i<50;i++) { const x=(i*73)%canvas.width, y=(i*137+Date.now()*0.02)%canvas.height; ctx.beginPath(); ctx.arc(x,y,1,0,Math.PI*2); ctx.fill(); }
+            gameState.powerUps.forEach(p => { ctx.fillStyle = p.type==='weapon'?'#ffd700':p.type==='life'?'#ff6b6b':'#4facfe'; ctx.beginPath(); ctx.arc(p.x,p.y,15,0,Math.PI*2); ctx.fill(); ctx.font='14px Arial'; ctx.fillStyle='white'; ctx.textAlign='center'; ctx.fillText(p.type==='weapon'?'🔫':p.type==='life'?'❤️':'⭐',p.x,p.y+1); });
+            gameState.particles.forEach(p => { ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill(); });
+            ctx.globalAlpha = 1;
+            if (boss) { ctx.fillStyle = boss.entering ? '#888' : '#ff4444'; ctx.fillRect(boss.x-boss.width/2,boss.y-boss.height/2,boss.width,boss.height); ctx.fillStyle = '#fff'; ctx.fillRect(boss.x-30,boss.y-20,60,10); ctx.fillStyle = '#f00'; ctx.fillRect(boss.x-30,boss.y-20,60*(boss.hp/boss.maxHp),10); }
+            gameState.enemies.forEach(e => { ctx.fillStyle = e.type==='tank'?'#ff6b6b':e.type==='fast'?'#4ecdc4':'#f093fb'; ctx.fillRect(e.x-e.width/2,e.y-e.height/2,e.width,e.height); });
+            gameState.bullets.forEach(b => { ctx.fillStyle = b.color; ctx.fillRect(b.x-b.w/2,b.y-b.h/2,b.w,b.h); });
+            gameState.enemyBullets.forEach(b => { ctx.fillStyle = '#ff6b6b'; ctx.beginPath(); ctx.arc(b.x,b.y,5,0,Math.PI*2); ctx.fill(); });
+            if (player.invincible && Math.floor(Date.now()/100)%2===0) return;
+            ctx.fillStyle = '#4facfe'; ctx.beginPath(); ctx.moveTo(player.x,player.y-player.height/2); ctx.lineTo(player.x-20,player.y+player.height/2); ctx.lineTo(player.x+20,player.y+player.height/2); ctx.closePath(); ctx.fill();
+        }
+        
+        document.addEventListener('keydown', e => { keys[e.code] = true; if (e.code==='Space') e.preventDefault(); });
+        document.addEventListener('keyup', e => { keys[e.code] = false; });
+        canvas.addEventListener('mousedown', () => keys['Mouse'] = true);
+        canvas.addEventListener('mouseup', () => keys['Mouse'] = false);
+        canvas.addEventListener('touchstart', e => { keys['Mouse'] = true; });
+        canvas.addEventListener('touchend', () => keys['Mouse'] = false);
+        
+        function handleTouch(dir) {
+            if (dir==='fire') keys['Mouse'] = true;
+            else { keys[dir==='up'?'ArrowUp':dir==='down'?'ArrowDown':dir==='left'?'ArrowLeft':'ArrowRight'] = true; }
+            setTimeout(() => keys[dir==='fire'?'Mouse':dir==='up'?'ArrowUp':dir==='down'?'ArrowDown':dir==='left'?'ArrowLeft':'ArrowRight'] = false, 100);
+        }
+    </script>
+</body>
+</html>
