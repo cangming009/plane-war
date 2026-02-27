@@ -94,9 +94,14 @@
         document.getElementById('maxLevel').textContent = gameState.maxLevel;
         
         function startGame() {
-            gameState = { running: true, score: 0, level: 1, lives: 3, highScore: gameState.highScore, maxLevel: gameState.maxLevel, weaponLevel: 1, hasBoss: false, bossDefeated: false, enemies: [], bullets: [], enemyBullets: [], particles: [], powerUps: [] };
+            if (enemySpawnTimer) { clearInterval(enemySpawnTimer); enemySpawnTimer = null; }
+            // 保存最高分和最高关卡
+            const highScore = gameState.highScore;
+            const maxLevel = gameState.maxLevel;
+            gameState = { running: true, score: 0, level: 1, lives: 3, highScore: highScore, maxLevel: maxLevel, weaponLevel: 1, hasBoss: false, bossDefeated: false, enemies: [], bullets: [], enemyBullets: [], particles: [], powerUps: [] };
             player = { x: canvas.width/2, y: canvas.height-80, width: 40, height: 50, speed: CONFIG.playerSpeed, shootCooldown: 0, invincible: false, invincibleTime: 0 };
             boss = null;
+            keys = {};
             hideAllScreens();
             updateHUD();
             enemySpawnTimer = setInterval(spawnEnemy, CONFIG.enemySpawnRate);
@@ -107,8 +112,13 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
         }
         
-        function restartGame() { hideAllScreens(); startGame(); }
-        function backToMenu() { hideAllScreens(); document.getElementById('startScreen').classList.remove('hidden'); document.getElementById('highScore').textContent = gameState.highScore; document.getElementById('maxLevel').textContent = gameState.maxLevel; }
+        function restartGame() { stopGame(); hideAllScreens(); startGame(); }
+        function backToMenu() { stopGame(); hideAllScreens(); document.getElementById('startScreen').classList.remove('hidden'); document.getElementById('highScore').textContent = gameState.highScore; document.getElementById('maxLevel').textContent = gameState.maxLevel; keys = {}; }
+        
+        function stopGame() {
+            gameState.running = false;
+            if (enemySpawnTimer) { clearInterval(enemySpawnTimer); enemySpawnTimer = null; }
+        }
         
         function spawnEnemy() {
             if (!gameState.running || gameState.hasBoss || gameState.level > CONFIG.levels) return;
